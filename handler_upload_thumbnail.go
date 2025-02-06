@@ -8,6 +8,8 @@ import (
     "bytes"
     "mime"
     "path/filepath"
+    "crypto/rand"
+    "encoding/base64"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
 )
@@ -46,17 +48,28 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
     media := header.Header.Get("Content-Type");
     media_type, _, err_mime := mime.ParseMediaType(media);
-    if err_mime != nil || media_type != "image/png" || media_type != "image/jpg"{
-        respondWithError(w, http.StatusInsufficientStorage, "Failed Creating the path", err);
+    fmt.Printf("%v\n", media_type);
+    if err_mime != nil || (media_type != "image/png" &&  media_type != "image/jpg"){
+        respondWithError(w, http.StatusInsufficientStorage, "Failed Creating the path", err_mime);
         return;
     }
 
-    file_path := filepath.Join("assets", videoIDString + "." + media_type[6:]);
+    buf := make([]byte, 32);
+    _, err_ran := rand.Read(buf)
+    if err_ran != nil {
+        respondWithError(w, http.StatusInsufficientStorage, "Failed Creating the path", err_ran);
+        return;
+    }
+
+    rand_str := base64.RawURLEncoding.EncodeToString(buf);
+
+
+    file_path := filepath.Join("assets", rand_str + "." + media_type[6:]);
     fmt.Printf("%s\n", file_path);
 
     fd, err_create := os.Create(file_path);
     if err_create != nil{
-        respondWithError(w, http.StatusInsufficientStorage, "Failed Creating the path", err);
+        respondWithError(w, http.StatusInsufficientStorage, "Failed Creating the path", err_create);
         return;
     }
 
@@ -75,7 +88,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
     }
 
 
-    data_url := fmt.Sprintf("http://localhost:8091/assets/%s.%s", videoIDString, media_type);
+    data_url := fmt.Sprintf("http://localhost:8091/assets/%s.%s", rand_str, media_type[6:]);
 
 
     video, err_query := cfg.db.GetVideo(videoID);
