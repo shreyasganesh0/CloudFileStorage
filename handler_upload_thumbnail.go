@@ -45,6 +45,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
         respondWithError(w, http.StatusBadRequest, "Couldnt fetch thumbnail", err);
         return;
     }
+    defer file.Close()
 
     media := header.Header.Get("Content-Type");
     media_type, _, err_mime := mime.ParseMediaType(media);
