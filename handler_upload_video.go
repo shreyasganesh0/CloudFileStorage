@@ -72,8 +72,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
     defer os.Remove(fd.Name());
     defer fd.Close();
-        
-    
     
     video_bytes, err_read := io.ReadAll(file);
     if err_read != nil{
@@ -87,6 +85,12 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
         respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_read);
         return;
     }
+
+    aspect_ratio, err_ratio := getVideoAspectRatio(fd.Name())
+    if err_ratio != nil {
+        fmt.Printf("Failed to get the aspect ratio %v\n", err_ratio)
+    }
+
 
     _, err_seek := fd.Seek(0, io.SeekStart);
     if err_seek != nil{
@@ -109,7 +113,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
         Bucket: &cfg.s3Bucket,
         Key: &url,
         Body: video_bytes_reader,
-        ContentType: &media,
+        ContentType: &media_type,
     };
     
     _, err_put := cfg.s3Client.PutObject(r.Context(), &put_obj);
