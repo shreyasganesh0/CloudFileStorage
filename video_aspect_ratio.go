@@ -3,6 +3,8 @@ package main
 import(
     "fmt"
     "encoding/json"
+    "os/exec"
+    "bytes"
 )
 
 func getVideoAspectRatio(filePath string) (string, error){
@@ -12,13 +14,14 @@ func getVideoAspectRatio(filePath string) (string, error){
             Width int `json:"width"`
             Height int `json:"height"`
             AspectRatio string `json:"display_aspect_ratio"`
-        } `json:"steams"`
+        } `json:"streams"`
     }
 
     
-    cmd := exec.Command("ffprob", "-v", "error", "-print-format", "json", "-show_streams", filePath);
+    fmt.Printf("Path is: %v\n", filePath);
+    cmd := exec.Command("ffprobe", "-v", "error", "-print_format", "json", "-show_streams", filePath);
     
-    var buf bytes.buffer;
+    var buf bytes.Buffer;
     cmd.Stdout = &buf;
     
     err_run := cmd.Run();
@@ -27,14 +30,13 @@ func getVideoAspectRatio(filePath string) (string, error){
     }
 
     var json_ans video_t;
-    decoder := json.NewDecoder(buf.Bytes());
-    err_decode := decoder.Decode(&json_ans);
-    if err_decoder != nil{
-        return "", err_decoder;
+    err_decode := json.Unmarshal(buf.Bytes(), &json_ans);
+    if err_decode != nil{
+        return "", err_decode;
     }
 
     fmt.Printf("%v\n", json_ans);
-    return json_ans.Streams[0].display_aspect_ratio, nil;
+    return json_ans.Streams[0].AspectRatio, nil;
 }
 
 

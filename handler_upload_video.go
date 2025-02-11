@@ -48,6 +48,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     }
 
 
+    r.ParseMultipartForm(UPLOAD_LIMIT);
     file, header, err_form := r.FormFile("video");
     if err_form  != nil{
         respondWithError(w, http.StatusBadRequest, "Couldnt fetch thumbnail", err);
@@ -91,8 +92,17 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
         fmt.Printf("Failed to get the aspect ratio %v\n", err_ratio)
     }
 
+    var prefix string
+    if aspect_ratio == "16:9" {
+        prefix = "landscape/";
+    } else if aspect_ratio == "9:16" {
+        prefix = "portrait/";
+    } else {
+        prefix = "other/";
+    }
 
-    _, err_seek := fd.Seek(0, io.SeekStart);
+
+    _, err_seek := video_bytes_reader.Seek(0, io.SeekStart);
     if err_seek != nil{
         respondWithError(w, http.StatusBadRequest, "Failed seeking bytes", err_seek);
         return;
@@ -105,7 +115,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
         return;
     }
     rand_str := base64.RawURLEncoding.EncodeToString(buf);
-    url := rand_str + "." + media_type[6:];
+    url := prefix + rand_str + "." + media_type[6:];
     fmt.Printf("url is %v\n", url);
 
     fmt.Printf("%v\n", cfg);
