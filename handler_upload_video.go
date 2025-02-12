@@ -73,6 +73,18 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
     defer os.Remove(fd.Name());
     defer fd.Close();
+
+    new_path, err_fast := processVideoForFastStart(fd.Name())
+    if err_fast!= nil{
+        respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_fast);
+        return;
+    }
+    new_fd, err_new := os.Open(new_path);
+    if err_new != nil {
+        respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_new);
+        return;
+    }
+
     
     video_bytes, err_read := io.ReadAll(file);
     if err_read != nil{
@@ -81,7 +93,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     }
 
     video_bytes_reader := bytes.NewReader(video_bytes);
-    _, err_cpy := io.Copy(fd, video_bytes_reader);
+    _, err_cpy := io.Copy(new_fd, video_bytes_reader);
     if err_cpy != nil{
         respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_read);
         return;
@@ -102,7 +114,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     }
 
 
-    _, err_seek := video_bytes_reader.Seek(0, io.SeekStart);
+    _, err_seek := new_fd.Seek(0, io.SeekStart);
     if err_seek != nil{
         respondWithError(w, http.StatusBadRequest, "Failed seeking bytes", err_seek);
         return;
@@ -122,7 +134,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     put_obj := s3.PutObjectInput{
         Bucket: &cfg.s3Bucket,
         Key: &url,
-        Body: video_bytes_reader,
+        Body: new_fd,
         ContentType: &media_type,
     };
     
