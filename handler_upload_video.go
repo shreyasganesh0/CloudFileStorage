@@ -39,7 +39,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-
 	
     video, err_query := cfg.db.GetVideo(videoID);
     if err_query != nil || video.UserID != userID {
@@ -74,17 +73,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     defer os.Remove(fd.Name());
     defer fd.Close();
 
-    new_path, err_fast := processVideoForFastStart(fd.Name())
-    if err_fast!= nil{
-        respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_fast);
-        return;
-    }
-    new_fd, err_new := os.Open(new_path);
-    if err_new != nil {
-        respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_new);
-        return;
-    }
-
     
     video_bytes, err_read := io.ReadAll(file);
     if err_read != nil{
@@ -93,7 +81,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     }
 
     video_bytes_reader := bytes.NewReader(video_bytes);
-    _, err_cpy := io.Copy(new_fd, video_bytes_reader);
+    _, err_cpy := io.Copy(fd, video_bytes_reader);
     if err_cpy != nil{
         respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_read);
         return;
@@ -112,6 +100,19 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
     } else {
         prefix = "other/";
     }
+    new_path, err_fast := processVideoForFastStart(fd.Name())
+    if err_fast!= nil{
+        respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_fast);
+        return;
+    }
+    new_fd, err_new := os.OpenFile(new_path, os.O_RDWR|os.O_CREATE, 0777);
+    if err_new != nil {
+        respondWithError(w, http.StatusBadRequest, "Failed reading bytes", err_new);
+        return;
+    }
+
+    defer os.Remove(new_fd.Name());
+    defer new_fd.Close();
 
 
     _, err_seek := new_fd.Seek(0, io.SeekStart);
